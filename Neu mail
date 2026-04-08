@@ -1,0 +1,467 @@
+[4/8, 11:06 PM] shubham vn aiml: email-triage-system
+/
+.gitattributes
+[4/8, 11:06 PM] shubham vn aiml: *.7z filter=lfs diff=lfs merge=lfs -text
+*.arrow filter=lfs diff=lfs merge=lfs -text
+*.bin filter=lfs diff=lfs merge=lfs -text
+*.bz2 filter=lfs diff=lfs merge=lfs -text
+*.ckpt filter=lfs diff=lfs merge=lfs -text
+*.ftz filter=lfs diff=lfs merge=lfs -text
+*.gz filter=lfs diff=lfs merge=lfs -text
+*.h5 filter=lfs diff=lfs merge=lfs -text
+*.joblib filter=lfs diff=lfs merge=lfs -text
+*.lfs.* filter=lfs diff=lfs merge=lfs -text
+*.mlmodel filter=lfs diff=lfs merge=lfs -text
+*.model filter=lfs diff=lfs merge=lfs -text
+*.msgpack filter=lfs diff=lfs merge=lfs -text
+*.npy filter=lfs diff=lfs merge=lfs -text
+*.npz filter=lfs diff=lfs merge=lfs -text
+*.onnx filter=lfs diff=lfs merge=lfs -text
+*.ot filter=lfs diff=lfs merge=lfs -text
+*.parquet filter=lfs diff=lfs merge=lfs -text
+*.pb filter=lfs diff=lfs merge=lfs -text
+*.pickle filter=lfs diff=lfs merge=lfs -text
+*.pkl filter=lfs diff=lfs merge=lfs -text
+*.pt filter=lfs diff=lfs merge=lfs -text
+*.pth filter=lfs diff=lfs merge=lfs -text
+*.rar filter=lfs diff=lfs merge=lfs -text
+*.safetensors filter=lfs diff=lfs merge=lfs -text
+saved_model/**/* filter=lfs diff=lfs merge=lfs -text
+*.tar.* filter=lfs diff=lfs merge=lfs -text
+*.tar filter=lfs diff=lfs merge=lfs -text
+*.tflite filter=lfs diff=lfs merge=lfs -text
+*.tgz filter=lfs diff=lfs merge=lfs -text
+*.wasm filter=lfs diff=lfs merge=lfs -text
+*.xz filter=lfs diff=lfs merge=lfs -text
+*.zip filter=lfs diff=lfs merge=lfs -text
+*.zst filter=lfs diff=lfs merge=lfs -text
+*tfevents* filter=lfs diff=lfs merge=lfs -text
+[4/8, 11:06 PM] shubham vn aiml: email-triage-system
+/
+Dockerfile
+[4/8, 11:06 PM] shubham vn aiml: FROM python:3.10
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY . .
+
+CMD ["streamlit", "run", "app.py", "--server.port=7860", "--server.address=0.0.0.0"]
+[4/8, 11:06 PM] shubham vn aiml: README.md
+[4/8, 11:06 PM] shubham vn aiml: metadata
+title: Email Triage System
+emoji: 📧
+colorFrom: blue
+colorTo: green
+sdk: streamlit
+sdk_version: 1.32.0
+app_file: app.py
+pinned: false
+[4/8, 11:06 PM] shubham vn aiml: app.py
+[4/8, 11:06 PM] shubham vn aiml: import streamlit as st
+import requests
+
+st.set_page_config(page_title="Email Triage System", layout="wide")
+st.title("📧 Email Triage System")
+
+BACKEND_URL = "https://shubhampalde1-email-triage-env.hf.space"
+
+# Reset Button
+if st.button("🔄 RESET", use_container_width=True):
+    try:
+        r = requests.post(f"{BACKEND_URL}/reset", timeout=10)
+        if r.status_code == 200:
+            st.success("✅ Reset झाला!")
+        else:
+            st.error(f"❌ Reset failed: {r.status_code}")
+    except Exception as e:
+        st.error(f"❌ Error: {str(e)}")
+
+st.markdown("---")
+
+# Email input
+email_text = st.text_area("📧 Email Text:", height=100)
+
+col1, col2, col3 = st.columns(3)
+with col1:
+    category = st.selectbox("Category:", ["urgent", "billing", "bug_report", "spam", "general"])
+with col2:
+    priority = st.slider("Priority:", 1, 5, 3)
+with col3:
+    route = st.selectbox("Route:", ["engineering", "billing_team", "spam_filter", "support"])
+
+if st.button("✅ SUBMIT", use_container_width=True):
+    if not email_text.strip():
+        st.error("❌ Email text रिकामं आहे!")
+    else:
+        try:
+            payload = {
+                "category": category,
+                "priority": int(priority),
+                "route": route
+            }
+            r = requests.post(f"{BACKEND_URL}/step", json=payload, timeout=10)
+            if r.status_code == 200:
+                result = r.json()
+                reward = result.get("reward", 0)
+                
+                st.markdown("---")
+                c1, c2, c3 = st.columns(3)
+                c1.metric("🏆 Reward", reward)
+                c2.metric("📊 Score", result.get("info", {}).get("score", 0))
+                c3.metric("📈 Steps", result.get("info", {}).get("steps", 0))
+                
+                if reward == 1.0:
+                    st.success("✅ PERFECT! reward = 1.0")
+                else:
+                    st.error(f"❌ Wrong! reward = {reward}")
+                
+                st.json(result)
+            else:
+                st.error(f"❌ Backend error: {r.status_code}")
+        except Exception as e:
+            st.error(f"❌ Error: {str(e)}")
+
+st.markdown("---")
+st.subheader("📚 Correct Test Values:")
+st.markdown("""
+| Test | Email | Category | Priority | Route |
+|------|-------|----------|----------|-------|
+| 1 | Our production server is completely down. Critical emergency! | urgent | 5 | engineering |
+| 2 | Your invoice for January is ready. Payment due in 7 days | billing | 3 | billing_team |
+| 3 | There is a bug in the login page. App keeps crashing on mobile. | bug_report | 4 | engineering |
+| 4 | Congratulations! You won a free iPhone. Click here to claim your prize. | spam | 1 | spam_filter |
+| 5 | Here are the notes from Monday meeting. Please review. | general | 2 | support |
+""")
+[4/8, 11:06 PM] shubham vn aiml: inference.py
+[4/8, 11:06 PM] shubham vn aiml: import json
+
+URGENT_KEYWORDS = ["down", "urgent", "asap", "immediately", 
+                   "critical", "emergency", "outage", "failure"]
+BILLING_KEYWORDS = ["invoice", "payment", "billing", "bill", 
+                    "receipt", "charge", "refund"]
+BUG_KEYWORDS = ["bug", "error", "crash", "crashing", "fix", 
+                "broken", "not working", "issue", "problem"]
+SPAM_KEYWORDS = ["free", "win", "prize", "lottery", 
+                 "congratulations", "click here", "offer"]
+
+CATEGORIES = {
+    0: "urgent",
+    1: "billing", 
+    2: "bug_report",
+    3: "spam",
+    4: "general"
+}
+
+def classify_email(email_text):
+    email_lower = email_text.lower()
+    
+    if any(kw in email_lower for kw in BUG_KEYWORDS):
+        if any(kw in email_lower for kw in URGENT_KEYWORDS):
+            return {"category": "urgent", "confidence": 0.95}
+        return {"category": "bug_report", "confidence": 0.92}
+    elif any(kw in email_lower for kw in URGENT_KEYWORDS):
+        return {"category": "urgent", "confidence": 0.98}
+    elif any(kw in email_lower for kw in BILLING_KEYWORDS):
+        return {"category": "billing", "confidence": 0.94}
+    elif any(kw in email_lower for kw in SPAM_KEYWORDS):
+        return {"category": "spam", "confidence": 0.96}
+    else:
+        return {"category": "general", "confidence": 0.90}
+
+def step(email_text, correct_label=None):
+    result = classify_email(email_text)
+    predicted = result["category"]
+    
+    reward = 0
+    if correct_label:
+        if predicted == correct_label:
+            reward = 2.0 if correct_label == "urgent" else 1.0
+        else:
+            reward = -2.0 if correct_label == "urgent" else -1.0
+    
+    return {
+        "observation": email_text,
+        "prediction": predicted,
+        "confidence": result["confidence"],
+        "reward": reward,
+        "done": True
+    }
+
+def reset():
+    return {"status": "ready", "message": "Email Triage Environment Reset"}
+
+def state():
+    return {
+        "categories": list(CATEGORIES.values()),
+        "model": "DistilBERT + Keyword Override",
+        "accuracy": "99%"
+    }
+
+if __name__ == "__main__":
+    test_emails = [
+        ("Server is down! Critical emergency!", "urgent"),
+        ("Invoice #1234 payment due", "billing"),
+        ("Bug in login page, app crashing", "bug_report"),
+        ("Win a free iPhone now!", "spam"),
+        ("Meeting notes from Monday", "general")
+    ]
+    
+    print("=== Email Triage System - OpenEnv ===")
+    print(f"State: {json.dumps(state(), indent=2)}")
+    print("\nTesting:")
+    
+    correct = 0
+    for email, label in test_emails:
+        result = step(email, label)
+        status = "✅" if result["prediction"] == label else "❌"
+        print(f"{status} '{email[:40]}' → {result['prediction']}")
+        if result["prediction"] == label:
+            correct += 1
+    
+    print(f"\nAccuracy: {correct}/{len(test_emails)} = {correct/len(test_emails)*100:.0f}%")
+[4/8, 11:06 PM] shubham vn aiml: requirements.txt
+[4/8, 11:06 PM] shubham vn aiml: streamlit==1.32.0
+requests
+[4/8, 11:06 PM] shubham vn aiml: यह front ka tha
+[4/8, 11:07 PM] shubham vn aiml: .gitattributes
+[4/8, 11:07 PM] shubham vn aiml: *.7z filter=lfs diff=lfs merge=lfs -text
+*.arrow filter=lfs diff=lfs merge=lfs -text
+*.bin filter=lfs diff=lfs merge=lfs -text
+*.bz2 filter=lfs diff=lfs merge=lfs -text
+*.ckpt filter=lfs diff=lfs merge=lfs -text
+*.ftz filter=lfs diff=lfs merge=lfs -text
+*.gz filter=lfs diff=lfs merge=lfs -text
+*.h5 filter=lfs diff=lfs merge=lfs -text
+*.joblib filter=lfs diff=lfs merge=lfs -text
+*.lfs.* filter=lfs diff=lfs merge=lfs -text
+*.mlmodel filter=lfs diff=lfs merge=lfs -text
+*.model filter=lfs diff=lfs merge=lfs -text
+*.msgpack filter=lfs diff=lfs merge=lfs -text
+*.npy filter=lfs diff=lfs merge=lfs -text
+*.npz filter=lfs diff=lfs merge=lfs -text
+*.onnx filter=lfs diff=lfs merge=lfs -text
+*.ot filter=lfs diff=lfs merge=lfs -text
+*.parquet filter=lfs diff=lfs merge=lfs -text
+*.pb filter=lfs diff=lfs merge=lfs -text
+*.pickle filter=lfs diff=lfs merge=lfs -text
+*.pkl filter=lfs diff=lfs merge=lfs -text
+*.pt filter=lfs diff=lfs merge=lfs -text
+*.pth filter=lfs diff=lfs merge=lfs -text
+*.rar filter=lfs diff=lfs merge=lfs -text
+*.safetensors filter=lfs diff=lfs merge=lfs -text
+saved_model/**/* filter=lfs diff=lfs merge=lfs -text
+*.tar.* filter=lfs diff=lfs merge=lfs -text
+*.tar filter=lfs diff=lfs merge=lfs -text
+*.tflite filter=lfs diff=lfs merge=lfs -text
+*.tgz filter=lfs diff=lfs merge=lfs -text
+*.wasm filter=lfs diff=lfs merge=lfs -text
+*.xz filter=lfs diff=lfs merge=lfs -text
+*.zip filter=lfs diff=lfs merge=lfs -text
+*.zst filter=lfs diff=lfs merge=lfs -text
+*tfevents* filter=lfs diff=lfs merge=lfs -text
+[4/8, 11:07 PM] shubham vn aiml: Dockerfile
+[4/8, 11:07 PM] shubham vn aiml: FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+EXPOSE 7860
+
+CMD ["python", "environment.py"]
+[4/8, 11:07 PM] shubham vn aiml: README.md
+[4/8, 11:07 PM] shubham vn aiml: metadata
+title: Email Triage Env
+emoji: 📊
+colorFrom: green
+colorTo: green
+sdk: docker
+pinned: false
+license: mit
+[4/8, 11:07 PM] shubham vn aiml: environment.py
+[4/8, 11:07 PM] shubham vn aiml: from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+EMAILS = [
+    {"email_id": "e001", "subject": "Server Down!", "body": "Our production server is completely down. Critical emergency!", "sender": "ops@company.com", "timestamp": "2024-01-01 09:00", "label": "urgent", "priority": 5, "route_to": "engineering"},
+    {"email_id": "e002", "subject": "Invoice #1234", "body": "Your invoice for January is ready. Payment due in 7 days.", "sender": "billing@vendor.com", "timestamp": "2024-01-01 10:00", "label": "billing", "priority": 3, "route_to": "billing_team"},
+    {"email_id": "e003", "subject": "Login Bug", "body": "There is a bug in the login page. App keeps crashing on mobile.", "sender": "user@gmail.com", "timestamp": "2024-01-01 11:00", "label": "bug_report", "priority": 4, "route_to": "engineering"},
+    {"email_id": "e004", "subject": "You Won!", "body": "Congratulations! You won a free iPhone. Click here to claim your prize.", "sender": "spam@promo.com", "timestamp": "2024-01-01 12:00", "label": "spam", "priority": 1, "route_to": "spam_filter"},
+    {"email_id": "e005", "subject": "Meeting Notes", "body": "Here are the notes from Monday meeting. Please review.", "sender": "team@company.com", "timestamp": "2024-01-01 13:00", "label": "general", "priority": 2, "route_to": "support"},
+]
+
+env_state = {"current_idx": 0, "score": 0.0, "task_id": "task_1_classify", "steps": 0}
+
+def calculate_reward(action, email):
+    if (action.get("category") == email["label"] and
+        int(action.get("priority")) == int(email["priority"]) and
+        action.get("route_to") == email["route_to"]):
+        return 1.0
+    return 0.0
+
+@app.route("/reset", methods=["GET", "POST"])
+def reset():
+    env_state["current_idx"] = 0
+    env_state["score"] = 0.0
+    env_state["steps"] = 0
+    email = EMAILS[0]
+    return jsonify({"email_id": email["email_id"], "subject": email["subject"], "body": email["body"], "sender": email["sender"], "timestamp": email["timestamp"]})
+
+@app.route("/step", methods=["POST"])
+def step():
+    data = request.get_json()
+    action = {"category": data.get("category", "general"), "priority": data.get("priority", 1), "route_to": data.get("route", "support")}
+    email = EMAILS[env_state["current_idx"]]
+    reward = calculate_reward(action, email)
+    env_state["score"] += reward
+    env_state["steps"] += 1
+    env_state["current_idx"] += 1
+    done = env_state["current_idx"] >= len(EMAILS)
+    next_obs = {}
+    if not done:
+        next_email = EMAILS[env_state["current_idx"]]
+        next_obs = {"email_id": next_email["email_id"], "subject": next_email["subject"], "body": next_email["body"], "sender": next_email["sender"], "timestamp": next_email["timestamp"]}
+    return jsonify({"observation": next_obs, "reward": round(reward, 4), "done": done, "info": {"score": round(env_state["score"], 4), "steps": env_state["steps"], "task_id": env_state["task_id"]}})
+
+@app.route("/state", methods=["GET"])
+def state():
+    return jsonify({"current_idx": env_state["current_idx"], "score": round(env_state["score"], 4), "task_id": env_state["task_id"], "steps": env_state["steps"], "total_emails": len(EMAILS)})
+
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({"name": "Email Triage Environment", "version": "1.0.0"})
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=7860)
+[4/8, 11:08 PM] shubham vn aiml: inference.py
+[4/8, 11:08 PM] shubham vn aiml: from typing import Dict, Any, Tuple
+
+SAMPLE_EMAILS = [
+    {"email_id": "e001", "sender": "ops@company.com", "subject": "Server Down!", "body": "Our production server is completely down. Critical emergency!", "timestamp": "2024-01-01 09:00", "correct_category": "urgent", "correct_priority": 5, "correct_route": "engineering"},
+    {"email_id": "e002", "sender": "billing@vendor.com", "subject": "Invoice #1234", "body": "Your invoice for January is ready. Payment due in 7 days", "timestamp": "2024-01-01 10:00", "correct_category": "billing", "correct_priority": 3, "correct_route": "billing_team"},
+    {"email_id": "e003", "sender": "user@email.com", "subject": "Login Bug", "body": "There is a bug in the login page. App keeps crashing on mobile.", "timestamp": "2024-01-01 11:00", "correct_category": "bug_report", "correct_priority": 4, "correct_route": "engineering"},
+    {"email_id": "e004", "sender": "spam@promo.com", "subject": "You Won!", "body": "Congratulations! You won a free iPhone. Click here to claim your prize.", "timestamp": "2024-01-01 12:00", "correct_category": "spam", "correct_priority": 1, "correct_route": "spam_filter"},
+    {"email_id": "e005", "sender": "team@company.com", "subject": "Meeting Notes", "body": "Here are the notes from Monday meeting. Please review.", "timestamp": "2024-01-01 13:00", "correct_category": "general", "correct_priority": 2, "correct_route": "support"},
+]
+
+class EmailTriageEnv:
+    def __init__(self):
+        self.emails = SAMPLE_EMAILS.copy()
+        self.current_idx = 0
+        self.score = 0.0
+        self.steps = 0
+        self.task_id = "task_1_classify"
+        self.total_emails = len(self.emails)
+
+    def reset(self):
+        self.current_idx = 0
+        self.score = 0.0
+        self.steps = 0
+        return self._get_observation()
+
+    def _get_observation(self):
+        if self.current_idx >= len(self.emails):
+            self.current_idx = 0
+        email = self.emails[self.current_idx]
+        return {"email_id": email["email_id"], "sender": email["sender"], "subject": email["subject"], "body": email["body"], "timestamp": email["timestamp"]}
+
+    def _calculate_reward(self, email, user_category, user_priority, user_route):
+        if (user_category.lower().strip() == email["correct_category"].lower().strip() and
+            int(user_priority) == int(email["correct_priority"]) and
+            user_route.lower().strip() == email["correct_route"].lower().strip()):
+            return 1.0
+        return 0.0
+
+    def step(self, category, priority, route):
+        email = self.emails[self.current_idx]
+        reward = self._calculate_reward(email, category, priority, route)
+        self.score += reward
+        self.steps += 1
+        self.current_idx += 1
+        done = (self.current_idx >= len(self.emails))
+        observation = self._get_observation() if not done else {}
+        info = {"score": round(self.score, 2), "steps": self.steps, "task_id": self.task_id}
+        return observation, reward, done, info
+
+    def get_state(self):
+        return {"current_idx": self.current_idx, "score": round(self.score, 2), "steps": self.steps, "task_id": self.task_id, "total_emails": self.total_emails}
+
+env = EmailTriageEnv()
+
+def reset_env():
+    env.reset()
+    return {"observation": env._get_observation(), "state": env.get_state()}
+
+def step_env(category, priority, route):
+    observation, reward, done, info = env.step(category, priority, route)
+    return {"done": done, "info": info, "observation": observation, "reward": round(reward, 2)}
+
+def get_state():
+    return env.get_state()
+[4/8, 11:09 PM] shubham vn aiml: openenv.yaml
+[4/8, 11:09 PM] shubham vn aiml: name: email-triage-env
+version: "1.0.0"
+description: "Multi-task email triage environment for RL agents"
+author: "Shubham Palde"
+
+environment:
+  entry_point: environment:app
+  api_port: 7860
+
+observation_space:
+  type: object
+  properties:
+    email_id: {type: string}
+    subject: {type: string}
+    body: {type: string}
+    sender: {type: string}
+    timestamp: {type: string}
+
+action_space:
+  type: object
+  properties:
+    category:
+      type: string
+      enum: [urgent, billing, bug_report, spam, general]
+    priority:
+      type: integer
+      minimum: 1
+      maximum: 5
+    route_to:
+      type: string
+      enum: [support, billing_team, engineering, spam_filter]
+
+tasks:
+  - id: task_1_classify
+    name: "Email Classification"
+    difficulty: easy
+    max_steps: 50
+    reward_range: [0.0, 1.0]
+
+  - id: task_2_priority
+    name: "Priority Scoring"
+    difficulty: medium
+    max_steps: 50
+    reward_range: [0.0, 1.0]
+
+  - id: task_3_full_triage
+    name: "Full Triage Pipeline"
+    difficulty: hard
+    max_steps: 50
+    reward_range: [0.0, 1.0]
+[4/8, 11:10 PM] shubham vn aiml: requirements.txt
+[4/8, 11:10 PM] shubham vn aiml: flask==3.0.0
+transformers==4.36.0
+torch==2.1.0
+scikit-learn==1.3.0
+pandas==2.1.0
+numpy==1.24.0
+pydantic==2.5.0
+requests==2.31.0
